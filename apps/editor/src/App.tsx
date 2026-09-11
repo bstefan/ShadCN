@@ -329,6 +329,10 @@ function App() {
 
       <aside className="component-nav">
         <div className="search-box"><Icon name="search" /><input aria-label="Search components" placeholder="Search 61 components" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
+        <div className="foundation-nav">
+          <button className={editorTab === "theme" ? "active" : ""} onClick={() => setEditorTab("theme")}><Icon name="sun" /><span>Theme</span><span className="nav-arrow">›</span></button>
+          <button className={editorTab === "sizes" ? "active" : ""} onClick={() => setEditorTab("sizes")}><Icon name="shape" /><span>Shared</span><span className="nav-arrow">›</span></button>
+        </div>
         <nav>
           {filteredGroups.map((group) => <section key={group.label}><h2>{group.label}</h2>{group.items.map((item) => <button key={item.id} className={component === item.id ? "active" : ""} onClick={() => setComponent(item.id)}><Icon name={item.icon} /><span>{item.label}</span><span className="nav-arrow">›</span></button>)}</section>)}
           {!filteredGroups.length && <div className="no-results">No components found.</div>}
@@ -345,8 +349,7 @@ function App() {
       </section>
 
       <aside className="token-panel">
-        <div className="panel-header"><div><span className="eyebrow">EDIT TOKENS</span><h2>Design system</h2></div><div className="history-actions"><button className="icon-button" onClick={undo} disabled={!history.past.length} aria-label="Undo last change" title={`Undo (${history.past.length}/10)`}><Icon name="undo" /></button><button className="icon-button" onClick={redo} disabled={!history.future.length} aria-label="Redo change" title="Redo"><Icon name="redo" /></button><button className="icon-button" onClick={reset} aria-label="Reset all tokens" title="Reset all"><Icon name="reset" /></button></div></div>
-        <div className="tabs"><button className={editorTab === "theme" ? "active" : ""} onClick={() => setEditorTab("theme")}>Theme</button><button className={editorTab === "sizes" ? "active" : ""} onClick={() => setEditorTab("sizes")}>Shared</button><button className={editorTab === "component" ? "active" : ""} onClick={() => setEditorTab("component")}>Component</button></div>
+        <div className="panel-header"><div><span className="eyebrow">{editorTab === "component" ? "EDIT COMPONENT" : "EDIT TOKENS"}</span><h2>{editorTab === "theme" ? "Theme" : editorTab === "sizes" ? "Shared tokens" : `${selectedItem.label} · ${activeSize}`}</h2></div><div className="history-actions"><button className="icon-button" onClick={undo} disabled={!history.past.length} aria-label="Undo last change" title={`Undo (${history.past.length}/10)`}><Icon name="undo" /></button><button className="icon-button" onClick={redo} disabled={!history.future.length} aria-label="Redo change" title="Redo"><Icon name="redo" /></button><button className="icon-button" onClick={reset} aria-label="Reset all tokens" title="Reset all"><Icon name="reset" /></button></div></div>
         {editorTab === "theme" ? <div className="panel-scroll">
           <section className="control-section"><div className="section-title"><h3>Colors</h3><span>{mode}</span></div><div className="color-list">{colorControls.map(({ key, label }) => <label className="color-control" key={key}><span>{label}</span><span className="color-value"><input type="color" value={tokens[key] as string} onChange={(event) => updateToken(key, event.target.value as never)} /><code>{tokens[key] as string}</code></span></label>)}</div></section>
           <section className="token-hint"><span>→</span><div><strong>Looking for spacing or radius?</strong><p>Edit reusable definitions in the Shared tab, then assign them to components.</p></div></section>
