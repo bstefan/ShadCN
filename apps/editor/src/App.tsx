@@ -334,7 +334,7 @@ function App() {
           <button className={editorTab === "sizes" ? "active" : ""} onClick={() => setEditorTab("sizes")}><Icon name="shape" /><span>Shared</span><span className="nav-arrow">›</span></button>
         </div>
         <nav>
-          {filteredGroups.map((group) => <section key={group.label}><h2>{group.label}</h2>{group.items.map((item) => <button key={item.id} className={component === item.id ? "active" : ""} onClick={() => setComponent(item.id)}><Icon name={item.icon} /><span>{item.label}</span><span className="nav-arrow">›</span></button>)}</section>)}
+          {filteredGroups.map((group) => <section key={group.label}><h2>{group.label}</h2>{group.items.map((item) => <button key={item.id} className={editorTab === "component" && component === item.id ? "active" : ""} onClick={() => { setComponent(item.id); setEditorTab("component") }}><Icon name={item.icon} /><span>{item.label}</span><span className="nav-arrow">›</span></button>)}</section>)}
           {!filteredGroups.length && <div className="no-results">No components found.</div>}
         </nav>
         <div className="nav-note"><span>{allItems.length}</span><p><strong>Components</strong>Complete bundled registry.</p></div>
