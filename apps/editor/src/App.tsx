@@ -39,12 +39,25 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   )
 }
 
-type ComponentId = "button" | "input" | "checkbox" | "select" | "badge" | "card" | "alert"
+type ComponentId = string
 
 const componentGroups: { label: string; items: { id: ComponentId; label: string; icon: IconName }[] }[] = [
-  { label: "Inputs", items: [{ id: "button", label: "Button", icon: "button" }, { id: "input", label: "Input", icon: "field" }, { id: "checkbox", label: "Checkbox", icon: "check" }, { id: "select", label: "Select", icon: "select" }] },
-  { label: "Display", items: [{ id: "badge", label: "Badge", icon: "shape" }, { id: "card", label: "Card", icon: "clipboard" }, { id: "alert", label: "Alert", icon: "shape" }] },
-] 
+  { label: "Actions", items: [
+    { id: "button", label: "Button", icon: "button" }, { id: "button-group", label: "Button Group", icon: "button" }, { id: "toggle", label: "Toggle", icon: "button" }, { id: "toggle-group", label: "Toggle Group", icon: "button" },
+  ] },
+  { label: "Form controls", items: [
+    { id: "checkbox", label: "Checkbox", icon: "check" }, { id: "combobox", label: "Combobox", icon: "select" }, { id: "field", label: "Field", icon: "field" }, { id: "form", label: "Form", icon: "clipboard" }, { id: "input", label: "Input", icon: "field" }, { id: "input-group", label: "Input Group", icon: "field" }, { id: "input-otp", label: "Input OTP", icon: "field" }, { id: "label", label: "Label", icon: "field" }, { id: "native-select", label: "Native Select", icon: "select" }, { id: "radio-group", label: "Radio Group", icon: "shape" }, { id: "select", label: "Select", icon: "select" }, { id: "slider", label: "Slider", icon: "shape" }, { id: "switch", label: "Switch", icon: "shape" }, { id: "textarea", label: "Textarea", icon: "field" },
+  ] },
+  { label: "Navigation", items: [
+    { id: "breadcrumb", label: "Breadcrumb", icon: "chevron" }, { id: "command", label: "Command", icon: "search" }, { id: "dropdown-menu", label: "Dropdown Menu", icon: "select" }, { id: "menubar", label: "Menubar", icon: "select" }, { id: "navigation-menu", label: "Navigation Menu", icon: "select" }, { id: "pagination", label: "Pagination", icon: "chevron" }, { id: "sidebar", label: "Sidebar", icon: "clipboard" }, { id: "tabs", label: "Tabs", icon: "button" },
+  ] },
+  { label: "Overlays", items: [
+    { id: "alert-dialog", label: "Alert Dialog", icon: "shape" }, { id: "context-menu", label: "Context Menu", icon: "select" }, { id: "dialog", label: "Dialog", icon: "shape" }, { id: "drawer", label: "Drawer", icon: "shape" }, { id: "hover-card", label: "Hover Card", icon: "clipboard" }, { id: "popover", label: "Popover", icon: "shape" }, { id: "sheet", label: "Sheet", icon: "shape" }, { id: "tooltip", label: "Tooltip", icon: "shape" },
+  ] },
+  { label: "Data display", items: [
+    { id: "accordion", label: "Accordion", icon: "chevron" }, { id: "alert", label: "Alert", icon: "shape" }, { id: "aspect-ratio", label: "Aspect Ratio", icon: "shape" }, { id: "attachment", label: "Attachment", icon: "clipboard" }, { id: "avatar", label: "Avatar", icon: "shape" }, { id: "badge", label: "Badge", icon: "shape" }, { id: "bubble", label: "Bubble", icon: "shape" }, { id: "calendar", label: "Calendar", icon: "clipboard" }, { id: "card", label: "Card", icon: "clipboard" }, { id: "carousel", label: "Carousel", icon: "shape" }, { id: "chart", label: "Chart", icon: "shape" }, { id: "collapsible", label: "Collapsible", icon: "chevron" }, { id: "direction", label: "Direction", icon: "arrow" }, { id: "empty", label: "Empty", icon: "shape" }, { id: "item", label: "Item", icon: "clipboard" }, { id: "kbd", label: "Kbd", icon: "button" }, { id: "marker", label: "Marker", icon: "shape" }, { id: "message", label: "Message", icon: "shape" }, { id: "message-scroller", label: "Message Scroller", icon: "shape" }, { id: "progress", label: "Progress", icon: "shape" }, { id: "resizable", label: "Resizable", icon: "shape" }, { id: "scroll-area", label: "Scroll Area", icon: "shape" }, { id: "separator", label: "Separator", icon: "shape" }, { id: "skeleton", label: "Skeleton", icon: "shape" }, { id: "sonner", label: "Sonner", icon: "shape" }, { id: "spinner", label: "Spinner", icon: "shape" }, { id: "table", label: "Table", icon: "clipboard" },
+  ] },
+]
 
 const allItems = componentGroups.flatMap((group) => group.items)
 type SizeId = "sm" | "md" | "lg"
@@ -89,7 +102,7 @@ function tokenStyle(tokens: Tokens): CSSProperties {
   } as CSSProperties
 }
 
-const statesByComponent: Record<ComponentId, string[]> = {
+const explicitStates: Record<string, string[]> = {
   button: ["Default", "Hover", "Focus", "Pressed", "Disabled"],
   input: ["Default", "Hover", "Focus", "Filled", "Invalid", "Disabled"],
   checkbox: ["Unchecked", "Hover", "Focus", "Checked", "Indeterminate", "Disabled"],
@@ -97,6 +110,19 @@ const statesByComponent: Record<ComponentId, string[]> = {
   badge: ["Default", "Secondary", "Outline", "Destructive"],
   card: ["Default", "Hover", "Selected", "Disabled"],
   alert: ["Default", "Destructive", "With action"],
+}
+
+const overlayComponents = new Set(["alert-dialog", "context-menu", "dialog", "drawer", "dropdown-menu", "hover-card", "popover", "sheet", "tooltip"])
+const formComponents = new Set(["button-group", "combobox", "field", "form", "input-group", "input-otp", "native-select", "radio-group", "slider", "switch", "textarea", "toggle", "toggle-group"])
+const disclosureComponents = new Set(["accordion", "collapsible", "command", "menubar", "navigation-menu", "sidebar", "tabs"])
+
+function statesForComponent(component: ComponentId) {
+  if (explicitStates[component]) return explicitStates[component]
+  if (overlayComponents.has(component)) return ["Closed", "Hover", "Open", "Focus"]
+  if (formComponents.has(component)) return ["Default", "Hover", "Focus", "Active", "Disabled"]
+  if (disclosureComponents.has(component)) return ["Collapsed", "Hover", "Expanded", "Focus"]
+  if (["progress", "skeleton", "spinner", "sonner"].includes(component)) return ["Default", "Loading", "Complete", "Error"]
+  return ["Default", "Hover", "Selected", "Disabled"]
 }
 
 function PreviewComponent({ component, state, size }: { component: ComponentId; state: string; size: SizeId }) {
@@ -107,7 +133,27 @@ function PreviewComponent({ component, state, size }: { component: ComponentId; 
   if (component === "select") return <div className="ui-select" data-size={size} data-state={stateKey}><span>{state === "Selected" ? "Design systems" : "Select a workspace"}</span><span className="select-chevrons">⌃<br />⌄</span></div>
   if (component === "badge") return <span className="ui-badge" data-size={size} data-state={stateKey}>{state}</span>
   if (component === "card") return <div className="ui-card" data-size={size} data-state={stateKey}><div className="card-icon"><Icon name="shape" /></div><div><strong>Design system</strong><span>12 components updated</span></div><Icon name="chevron" /></div>
-  return <div className="ui-alert" data-size={size} data-state={stateKey}><div className="alert-mark">!</div><div><strong>{state === "Destructive" ? "Something went wrong" : "Heads up"}</strong><span>Your token changes are ready to preview.</span></div>{state === "With action" && <button>Review</button>}</div>
+  if (component === "alert") return <div className="ui-alert" data-size={size} data-state={stateKey}><div className="alert-mark">!</div><div><strong>{state === "Destructive" ? "Something went wrong" : "Heads up"}</strong><span>Your token changes are ready to preview.</span></div>{state === "With action" && <button>Review</button>}</div>
+  if (["switch", "toggle", "toggle-group"].includes(component)) return <div className="demo-inline"><span className="ui-switch" data-size={size} data-state={stateKey}><span /></span><span>{component === "switch" ? "Notifications" : "Toggle option"}</span></div>
+  if (component === "slider" || component === "progress") return <div className="ui-track" data-size={size} data-state={stateKey}><span style={{ width: state === "Complete" ? "100%" : state === "Error" ? "72%" : "54%" }} /><i /></div>
+  if (component === "textarea") return <div className="ui-textarea" data-size={size} data-state={stateKey}>Write a message…</div>
+  if (component === "radio-group") return <div className="demo-stack"><div className="demo-inline"><span className="ui-radio selected" /><span>Comfortable</span></div><div className="demo-inline"><span className="ui-radio" /><span>Compact</span></div></div>
+  if (component === "input-otp") return <div className="otp-row" data-size={size} data-state={stateKey}>{["4", "8", "", ""].map((value, index) => <span key={index}>{value || "·"}</span>)}</div>
+  if (["button-group", "pagination"].includes(component)) return <div className="button-row" data-size={size} data-state={stateKey}><button>←</button><button className="current">1</button><button>2</button><button>→</button></div>
+  if (["accordion", "collapsible"].includes(component)) return <div className="ui-disclosure" data-size={size} data-state={stateKey}><div><strong>Is it accessible?</strong><span>{state === "Expanded" ? "Yes. It follows the WAI-ARIA pattern." : ""}</span></div><span>⌄</span></div>
+  if (["combobox", "command", "context-menu", "dropdown-menu", "menubar", "native-select", "navigation-menu"].includes(component)) return <div className="ui-menu" data-size={size} data-state={stateKey}><div><Icon name="search" size={12} /><span>{component === "command" ? "Type a command…" : "Choose an option"}</span></div>{["Open", "Expanded", "Active"].includes(state) && <ul><li>New project <kbd>⌘N</kbd></li><li className="selected">Design system</li><li>Settings</li></ul>}</div>
+  if (overlayComponents.has(component)) return <div className="ui-overlay-demo" data-size={size} data-state={stateKey}><button>{state === "Closed" ? "Open" : state}</button>{["Open", "Focus"].includes(state) && <div><strong>{component.replace("-", " ")}</strong><span>Token-driven surface content.</span><button>Continue</button></div>}</div>
+  if (component === "tabs") return <div className="ui-tabs" data-size={size} data-state={stateKey}><div><span className="active">Account</span><span>Password</span><span>Team</span></div><p>Manage your account preferences.</p></div>
+  if (component === "breadcrumb") return <div className="ui-breadcrumb" data-size={size} data-state={stateKey}><span>Home</span><b>/</b><span>Components</span><b>/</b><strong>Editor</strong></div>
+  if (component === "table") return <div className="ui-table" data-size={size} data-state={stateKey}><div><strong>Name</strong><strong>Status</strong></div><div><span>Button</span><span>Ready</span></div><div><span>Dialog</span><span>Draft</span></div></div>
+  if (component === "chart") return <div className="ui-chart" data-size={size} data-state={stateKey}>{[38, 62, 46, 82, 68].map((height, index) => <span key={index} style={{ height: `${height}%` }} />)}</div>
+  if (component === "calendar") return <div className="ui-calendar" data-size={size} data-state={stateKey}>{["M", "T", "W", "T", "F", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].map((day, index) => <span className={day === "6" ? "selected" : ""} key={index}>{day}</span>)}</div>
+  if (component === "skeleton") return <div className="ui-skeleton" data-size={size}><i /><div><span /><span /></div></div>
+  if (component === "spinner") return <div className="ui-spinner" data-size={size} data-state={stateKey} />
+  if (component === "separator") return <div className="ui-separator" data-state={stateKey} />
+  if (component === "avatar") return <div className="ui-avatar" data-size={size} data-state={stateKey}>SC</div>
+  if (component === "kbd") return <kbd className="ui-kbd" data-size={size} data-state={stateKey}>⌘ K</kbd>
+  return <div className="ui-generic" data-size={size} data-state={stateKey}><span className="generic-icon"><Icon name={component === "direction" ? "arrow" : "shape"} /></span><div><strong>{allItems.find((item) => item.id === component)?.label}</strong><span>{state} preview</span></div>{!['aspect-ratio', 'marker'].includes(component) && <Icon name="chevron" size={13} />}</div>
 }
 
 function Slider({ label, value, min, max, suffix = "px", onChange }: { label: string; value: number; min: number; max: number; suffix?: string; onChange: (value: number) => void }) {
@@ -121,8 +167,10 @@ function App() {
   const [editorTab, setEditorTab] = useState<"theme" | "sizes">("theme")
   const [activeSize, setActiveSize] = useState<SizeId>("md")
   const [copied, setCopied] = useState(false)
+  const [query, setQuery] = useState("")
   const tokens = tokensByMode[mode]
   const selectedItem = allItems.find((item) => item.id === component)!
+  const filteredGroups = componentGroups.map((group) => ({ ...group, items: group.items.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())) })).filter((group) => group.items.length)
 
   const cssExport = useMemo(() => `:root {\n${colorControls.map(({ key }) => `  --${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${tokens[key]};`).join("\n")}\n  --radius: ${tokens.radius}px;\n  --space: ${tokens.density}px;\n}`, [tokens])
 
@@ -154,17 +202,18 @@ function App() {
       </header>
 
       <aside className="component-nav">
-        <div className="search-box"><Icon name="search" /><input aria-label="Search components" placeholder="Search components" /></div>
+        <div className="search-box"><Icon name="search" /><input aria-label="Search components" placeholder="Search 61 components" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
         <nav>
-          {componentGroups.map((group) => <section key={group.label}><h2>{group.label}</h2>{group.items.map((item) => <button key={item.id} className={component === item.id ? "active" : ""} onClick={() => setComponent(item.id)}><Icon name={item.icon} /><span>{item.label}</span><span className="nav-arrow">›</span></button>)}</section>)}
+          {filteredGroups.map((group) => <section key={group.label}><h2>{group.label}</h2>{group.items.map((item) => <button key={item.id} className={component === item.id ? "active" : ""} onClick={() => setComponent(item.id)}><Icon name={item.icon} /><span>{item.label}</span><span className="nav-arrow">›</span></button>)}</section>)}
+          {!filteredGroups.length && <div className="no-results">No components found.</div>}
         </nav>
-        <div className="nav-note"><span>7</span><p><strong>Components</strong>Every state, one token system.</p></div>
+        <div className="nav-note"><span>{allItems.length}</span><p><strong>Components</strong>Complete bundled registry.</p></div>
       </aside>
 
       <section className="preview-area" style={tokenStyle(tokens)} data-theme={mode}>
         <div className="preview-heading"><div><span className="eyebrow">COMPONENT / {selectedItem.label.toUpperCase()}</span><h1>{selectedItem.label}</h1><p>Inspect every state. Adjust its shared tokens from the sidebar.</p></div><div className="mode-pill"><span className={mode === "light" ? "active" : ""}>Light</span><span className={mode === "dark" ? "active" : ""}>Dark</span></div></div>
         <div className="preview-grid">
-          {(["sm", "md", "lg"] as SizeId[]).map((size) => <div className="size-column" key={size}><div className="size-title"><span>{size === "md" ? "Default" : size.toUpperCase()}</span><button onClick={() => { setActiveSize(size); setEditorTab("sizes") }}>Edit {size}<Icon name="arrow" size={13} /></button></div>{statesByComponent[component].map((state) => <div className="state-row" key={state}><span className="state-label">{state}</span><div className="component-stage"><PreviewComponent component={component} state={state} size={size} /></div></div>)}</div>)}
+          {(["sm", "md", "lg"] as SizeId[]).map((size) => <div className="size-column" key={size}><div className="size-title"><span>{size === "md" ? "Default" : size.toUpperCase()}</span><button onClick={() => { setActiveSize(size); setEditorTab("sizes") }}>Edit {size}<Icon name="arrow" size={13} /></button></div>{statesForComponent(component).map((state) => <div className="state-row" key={state}><span className="state-label">{state}</span><div className="component-stage"><PreviewComponent component={component} state={state} size={size} /></div></div>)}</div>)}
         </div>
         <div className="token-footnote"><span className="link-node" /><span className="link-line" /><p><strong>Size-linked variants</strong>All {activeSize} components share height, padding, gap and type tokens.</p></div>
       </section>
@@ -176,7 +225,7 @@ function App() {
           <section className="control-section"><div className="section-title"><h3>Colors</h3><span>{mode}</span></div><div className="color-list">{colorControls.map(({ key, label }) => <label className="color-control" key={key}><span>{label}</span><span className="color-value"><input type="color" value={tokens[key] as string} onChange={(event) => updateToken(key, event.target.value as never)} /><code>{tokens[key] as string}</code></span></label>)}</div></section>
           <section className="control-section"><div className="section-title"><h3>Shape & spacing</h3></div><Slider label="Radius" value={tokens.radius} min={0} max={24} onChange={(value) => updateToken("radius", value)} /><Slider label="Base spacing" value={tokens.density} min={8} max={28} onChange={(value) => updateToken("density", value)} /></section>
         </div> : <div className="panel-scroll">
-          <section className="control-section"><div className="section-title"><div><h3>Variant size</h3><p>Changes apply across every component.</p></div><span className="linked-badge">Linked</span></div><div className="segmented">{(["sm", "md", "lg"] as SizeId[]).map((size) => <button className={activeSize === size ? "active" : ""} onClick={() => setActiveSize(size)} key={size}>{size === "md" ? "Default" : size.toUpperCase()}</button>)}</div><div className="link-card"><span className="link-icon">⌘</span><div><strong>{activeSize.toUpperCase()} token group</strong><p>Button, input, select and badge variants stay in sync.</p></div></div></section>
+          <section className="control-section"><div className="section-title"><div><h3>Variant size</h3><p>Changes apply across every component.</p></div><span className="linked-badge">Linked</span></div><div className="segmented">{(["sm", "md", "lg"] as SizeId[]).map((size) => <button className={activeSize === size ? "active" : ""} onClick={() => setActiveSize(size)} key={size}>{size === "md" ? "Default" : size.toUpperCase()}</button>)}</div><div className="link-card"><span className="link-icon">⌘</span><div><strong>{activeSize.toUpperCase()} token group</strong><p>All compatible variants in the 61-component registry stay in sync.</p></div></div></section>
           <section className="control-section"><div className="section-title"><h3>Dimensions</h3><span>{activeSize}</span></div><Slider label="Height" value={tokens.size[activeSize].height} min={24} max={56} onChange={(value) => updateSize("height", value)} /><Slider label="Horizontal padding" value={tokens.size[activeSize].padding} min={6} max={32} onChange={(value) => updateSize("padding", value)} /><Slider label="Internal gap" value={tokens.size[activeSize].gap} min={2} max={20} onChange={(value) => updateSize("gap", value)} /><Slider label="Font size" value={tokens.size[activeSize].font} min={11} max={18} onChange={(value) => updateSize("font", value)} /></section>
           <section className="affected-section"><h3>Affected variants</h3>{["Button", "Input", "Select", "Badge"].map((label) => <div key={label}><span>{label}</span><span>{activeSize}<Icon name="check" size={13} /></span></div>)}</section>
         </div>}
