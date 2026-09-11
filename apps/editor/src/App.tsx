@@ -7,6 +7,7 @@ type IconName =
   | "chevron"
   | "clipboard"
   | "close"
+  | "columns"
   | "field"
   | "moon"
   | "reset"
@@ -14,6 +15,7 @@ type IconName =
   | "select"
   | "shape"
   | "sun"
+  | "table"
   | "undo"
   | "redo"
 
@@ -25,6 +27,7 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
     chevron: <path d="m9 18 6-6-6-6" />,
     clipboard: <><rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4.5V3h6v1.5M9 9h6m-6 4h6m-6 4h4" /></>,
     close: <><path d="m7 7 10 10M17 7 7 17" /></>,
+    columns: <><rect x="3" y="4" width="5" height="16" rx="1" /><rect x="10" y="4" width="5" height="16" rx="1" /><rect x="17" y="4" width="4" height="16" rx="1" /></>,
     field: <><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 10h5" /></>,
     moon: <path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z" />,
     reset: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>,
@@ -32,6 +35,7 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
     select: <><rect x="4" y="5" width="16" height="14" rx="2" /><path d="m15 10 2 2-2 2" /></>,
     shape: <><circle cx="8" cy="8" r="4" /><rect x="12" y="12" width="8" height="8" rx="2" /></>,
     sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+    table: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M3 15h18" /></>,
     undo: <><path d="M9 7 4 12l5 5" /><path d="M4 12h9a6 6 0 0 1 6 6" /></>,
     redo: <><path d="m15 7 5 5-5 5" /><path d="M20 12h-9a6 6 0 0 0-6 6" /></>,
   }
@@ -237,6 +241,7 @@ function App() {
   const [initialWorkspace] = useState(loadWorkspace)
   const [component, setComponent] = useState<ComponentId>("button")
   const [mode, setMode] = useState<Mode>("light")
+  const [previewLayout, setPreviewLayout] = useState<"columns" | "stacked">(() => localStorage.getItem("shadcn-studio-preview-layout") === "stacked" ? "stacked" : "columns")
   const [design, setDesign] = useState<EditorState>(initialWorkspace.design)
   const [history, setHistory] = useState<{ past: EditorState[]; future: EditorState[] }>(initialWorkspace.history)
   const [editorTab, setEditorTab] = useState<"theme" | "sizes" | "component">("theme")
@@ -252,6 +257,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify({ design, history }))
   }, [design, history])
+
+  useEffect(() => {
+    localStorage.setItem("shadcn-studio-preview-layout", previewLayout)
+  }, [previewLayout])
 
   const applyChange = (recipe: (current: EditorState) => EditorState) => {
     const next = recipe(design)
@@ -328,8 +337,8 @@ function App() {
       </aside>
 
       <section className="preview-area" style={tokenStyle(tokens, detailTokens)} data-theme={mode}>
-        <div className="preview-heading"><div><span className="eyebrow">COMPONENT / {selectedItem.label.toUpperCase()}</span><h1>{selectedItem.label}</h1><p>Inspect every state. Adjust its shared tokens from the sidebar.</p></div><div className="mode-pill"><span className={mode === "light" ? "active" : ""}>Light</span><span className={mode === "dark" ? "active" : ""}>Dark</span></div></div>
-        <div className="preview-grid">
+        <div className="preview-heading"><div><span className="eyebrow">COMPONENT / {selectedItem.label.toUpperCase()}</span><h1>{selectedItem.label}</h1><p>Inspect every state. Adjust its shared tokens from the sidebar.</p></div><div className="layout-switch" role="group" aria-label="Preview layout"><button className={previewLayout === "columns" ? "active" : ""} onClick={() => setPreviewLayout("columns")} aria-label="Show sizes in columns" title="Columns"><Icon name="columns" /></button><button className={previewLayout === "stacked" ? "active" : ""} onClick={() => setPreviewLayout("stacked")} aria-label="Show sizes one under another" title="Table"><Icon name="table" /></button></div></div>
+        <div className="preview-grid" data-layout={previewLayout}>
           {(["sm", "md", "lg"] as SizeId[]).map((size) => { const override = componentOverrides[component]?.[size]; return <div className="size-column" key={size}><div className="size-title"><span>{size === "md" ? "Default" : size.toUpperCase()}{override && <b>Custom</b>}</span><button onClick={() => { setActiveSize(size); setEditorTab("component") }}>Edit {size}<Icon name="arrow" size={13} /></button></div>{statesForComponent(component).map((state) => <div className="state-row" key={state}><span className="state-label">{state}</span><div className="component-stage" data-component={component} data-size={size} style={componentStyle(override, size, tokens, detailTokens)}><PreviewComponent component={component} state={state} size={size} /></div></div>)}</div> })}
         </div>
         <div className="token-footnote"><span className="link-node" /><span className="link-line" /><p><strong>Size-linked variants</strong>All {activeSize} components share height, padding, gap and type tokens.</p></div>
