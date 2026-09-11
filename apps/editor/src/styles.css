@@ -70,7 +70,7 @@ button { cursor: pointer; }
 .link-line { width: 28px; height: 1px; background: var(--border); }
 
 /* Preview primitives intentionally consume semantic and linked size tokens only. */
-.ui-button, .ui-input, .ui-select, .ui-badge, .ui-switch, .ui-track, .ui-textarea, .otp-row, .button-row, .ui-disclosure, .ui-menu, .ui-overlay-demo, .ui-tabs, .ui-breadcrumb, .ui-table, .ui-chart, .ui-calendar, .ui-skeleton, .ui-spinner, .ui-avatar, .ui-kbd, .ui-generic { --h: var(--control-md-height); --px: var(--control-md-px); --gap: var(--control-md-gap); --font: var(--control-md-font); }
+.ui-button, .ui-input, .ui-input-group, .ui-select, .ui-badge, .ui-switch, .ui-track, .ui-textarea, .otp-row, .button-row, .ui-disclosure, .ui-menu, .ui-overlay-demo, .ui-tabs, .ui-breadcrumb, .ui-table, .ui-chart, .ui-calendar, .ui-skeleton, .ui-spinner, .ui-avatar, .ui-kbd, .ui-generic { --h: var(--control-md-height); --px: var(--control-md-px); --gap: var(--control-md-gap); --font: var(--control-md-font); }
 [data-size="sm"] { --h: var(--control-sm-height); --px: var(--control-sm-px); --gap: var(--control-sm-gap); --font: var(--control-sm-font); }
 [data-size="lg"] { --h: var(--control-lg-height); --px: var(--control-lg-px); --gap: var(--control-lg-gap); --font: var(--control-lg-font); }
 .ui-button { min-height: var(--h); padding: 0 var(--px); gap: var(--gap); border: 1px solid var(--primary); border-radius: var(--radius); display: inline-flex; align-items: center; justify-content: center; background: var(--primary); color: var(--primary-foreground); font-size: var(--font); font-weight: 500; box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 12%, transparent); }
@@ -84,6 +84,17 @@ button { cursor: pointer; }
 .ui-input[data-state="filled"], .ui-select[data-state="selected"] { color: var(--foreground); }
 .ui-input[data-state="invalid"], .ui-select[data-state="invalid"] { border-color: var(--destructive); color: var(--destructive); outline: 3px solid color-mix(in srgb, var(--destructive) 14%, transparent); }
 .ui-input[data-state="disabled"], .ui-select[data-state="disabled"] { background: var(--muted); opacity: .55; }
+.ui-input-group { width: 100%; min-height: var(--h); display: flex; align-items: center; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); color: var(--foreground); font-size: var(--font); box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 5%, transparent); }
+.input-group-addon { min-height: calc(var(--h) - 2px); padding-left: var(--px); display: inline-flex; align-items: center; color: var(--muted-foreground); }
+.input-group-field { min-width: 0; flex: 1; padding: 0 var(--gap); color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-input-group > button { margin-right: calc(var(--gap) * .65); padding: calc(var(--gap) * .45) calc(var(--gap) * .7); border: 1px solid var(--border); border-radius: calc(var(--radius) * .6); background: var(--secondary); color: var(--muted-foreground); font: inherit; font-size: .78em; font-weight: 600; white-space: nowrap; }
+.ui-input-group[data-state="hover"] { border-color: color-mix(in srgb, var(--foreground) 35%, var(--border)); }
+.ui-input-group[data-state="hover"] > button { background: color-mix(in srgb, var(--secondary) 75%, var(--foreground)); color: var(--foreground); }
+.ui-input-group[data-state="focus"] { border-color: var(--ring); outline: 3px solid color-mix(in srgb, var(--ring) 24%, transparent); }
+.ui-input-group[data-state="focus"] .input-group-field, .ui-input-group[data-state="filled"] .input-group-field { color: var(--foreground); }
+.ui-input-group[data-state="invalid"] { border-color: var(--destructive); outline: 3px solid color-mix(in srgb, var(--destructive) 14%, transparent); }
+.ui-input-group[data-state="invalid"] .input-group-addon, .ui-input-group[data-state="invalid"] .input-group-field { color: var(--destructive); }
+.ui-input-group[data-state="disabled"] { background: var(--muted); opacity: .5; }
 .ui-select { justify-content: space-between; gap: var(--gap); }
 .select-chevrons { line-height: 6px; font-size: 9px; text-align: center; }
 .check-wrap { display: flex; align-items: center; gap: var(--control-md-gap); font-size: var(--control-md-font); }

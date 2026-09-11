@@ -178,6 +178,7 @@ function componentStyle(override: ComponentOverride | undefined, size: SizeId, t
 const explicitStates: Record<string, string[]> = {
   button: ["Default", "Hover", "Focus", "Pressed", "Disabled"],
   input: ["Default", "Hover", "Focus", "Filled", "Invalid", "Disabled"],
+  "input-group": ["Default", "Hover", "Focus", "Filled", "Invalid", "Disabled"],
   checkbox: ["Unchecked", "Hover", "Focus", "Checked", "Indeterminate", "Disabled"],
   select: ["Placeholder", "Hover", "Focus", "Open", "Selected", "Invalid", "Disabled"],
   badge: ["Default", "Secondary", "Outline", "Destructive"],
@@ -202,6 +203,7 @@ function PreviewComponent({ component, state, size }: { component: ComponentId; 
   const stateKey = state.toLowerCase().replace(" ", "-")
   if (component === "button") return <button className="ui-button" data-size={size} data-state={stateKey} disabled={state === "Disabled"}>{state === "Pressed" ? "Saving…" : "Continue"}<Icon name="arrow" size={14} /></button>
   if (component === "input") return <div className="ui-input" data-size={size} data-state={stateKey}><span>{state === "Filled" ? "hello@studio.co" : state === "Invalid" ? "not-an-email" : "Email address"}</span></div>
+  if (component === "input-group") return <div className="ui-input-group" data-size={size} data-state={stateKey}><span className="input-group-addon"><Icon name="search" size={14} /></span><span className="input-group-field">{state === "Filled" ? "button.tsx" : state === "Invalid" ? "No component found" : "Search components…"}</span><button disabled={state === "Disabled"}>{state === "Filled" ? "Clear" : "⌘ K"}</button></div>
   if (component === "checkbox") return <div className="check-wrap"><span className="ui-checkbox" data-size={size} data-state={stateKey}>{state === "Checked" && <Icon name="check" size={12} />}{state === "Indeterminate" && <span className="minus" />}</span><span>Accept terms</span></div>
   if (component === "select") return <div className="ui-select" data-size={size} data-state={stateKey}><span>{state === "Selected" ? "Design systems" : "Select a workspace"}</span><span className="select-chevrons">⌃<br />⌄</span></div>
   if (component === "badge") return <span className="ui-badge" data-size={size} data-state={stateKey}>{state}</span>
