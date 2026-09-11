@@ -287,9 +287,9 @@ button { cursor: pointer; }
 .panel-scroll { flex: 1; min-height: 0; overflow: auto; padding: 2px 14px 16px; }
 .control-section { padding: 18px 2px; border-bottom: 1px solid var(--border); }
 .section-title { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
-.section-title h3, .affected-section h3 { margin: 0; font-size: 11px; font-weight: 650; }
-.section-title p { margin: 4px 0 0; color: var(--muted-foreground); font-size: 9px; }
-.section-title > span { color: var(--muted-foreground); font-family: "DM Mono", monospace; font-size: 8px; text-transform: uppercase; }
+.section-title h3, .affected-section h3 { margin: 0; font-size: 12px; font-weight: 650; }
+.section-title p { margin: 5px 0 0; color: var(--muted-foreground); font-size: 10px; line-height: 1.4; }
+.section-title > span { color: var(--muted-foreground); font-family: "DM Mono", monospace; font-size: 9px; text-transform: uppercase; }
 .color-list { display: grid; gap: 2px; }
 .color-control { min-height: 30px; display: flex; align-items: center; justify-content: space-between; color: var(--muted-foreground); font-size: 10px; }
 .color-value { display: flex; align-items: center; gap: 7px; }
@@ -301,17 +301,17 @@ button { cursor: pointer; }
 .slider-control > span { display: flex; align-items: center; justify-content: space-between; color: var(--muted-foreground); font-size: 10px; }
 .slider-control output { min-width: 38px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--background); color: var(--muted-foreground); font-family: "DM Mono", monospace; font-size: 8px; text-align: center; }
 .slider-control input { width: 100%; height: 3px; margin: 12px 0 2px; accent-color: var(--primary); cursor: ew-resize; }
-.token-select { position: relative; min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); color: var(--muted-foreground); font-size: 10px; }
+.token-select { position: relative; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); color: var(--muted-foreground); font-size: 11px; }
 .token-select:last-child { border-bottom: 0; }
 .token-select::after { content: "⌄"; position: absolute; right: 9px; top: 50%; color: var(--muted-foreground); pointer-events: none; transform: translateY(-55%); }
-.token-select select { width: 158px; height: 29px; padding: 0 28px 0 9px; appearance: none; border: 1px solid var(--border); border-radius: 6px; outline: 0; background: var(--background); color: var(--foreground); font-family: "DM Mono", monospace; font-size: 8px; cursor: pointer; }
+.token-select select { width: 162px; height: 34px; padding: 0 28px 0 10px; appearance: none; border: 1px solid var(--border); border-radius: 6px; outline: 0; background: var(--background); color: var(--foreground); font-family: "DM Mono", monospace; font-size: 10px; cursor: pointer; }
 .token-select select:focus { border-color: var(--ring); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 20%, transparent); }
 .token-hint { display: flex; gap: 10px; margin-top: 14px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--muted); }
 .token-hint > span { color: var(--muted-foreground); }
 .token-hint strong { display: block; font-size: 9px; }
 .token-hint p { margin: 4px 0 0; color: var(--muted-foreground); font-size: 8px; line-height: 1.5; }
 .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; border-radius: 7px; background: var(--muted); }
-.segmented button { height: 29px; border: 0; border-radius: 5px; color: var(--muted-foreground); background: transparent; font-size: 9px; }
+.segmented button { height: 32px; border: 0; border-radius: 5px; color: var(--muted-foreground); background: transparent; font-size: 10px; }
 .segmented button.active { background: var(--background); color: var(--foreground); font-weight: 600; box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground) 8%, transparent); }
 .linked-badge { padding: 4px 6px; border-radius: 10px; background: color-mix(in srgb, var(--primary) 12%, var(--background)); color: var(--primary) !important; font-family: Inter, sans-serif !important; font-size: 8px !important; text-transform: none !important; }
 .custom-badge { padding: 4px 6px; border-radius: 10px; background: color-mix(in srgb, var(--ring) 18%, var(--background)); color: var(--foreground) !important; font-family: Inter, sans-serif !important; font-size: 8px !important; text-transform: none !important; }
