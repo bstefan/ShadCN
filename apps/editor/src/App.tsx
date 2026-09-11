@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode, useMemo, useState } from "react"
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react"
 
 type IconName =
   | "arrow"
@@ -14,6 +14,8 @@ type IconName =
   | "select"
   | "shape"
   | "sun"
+  | "undo"
+  | "redo"
 
 function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, ReactNode> = {
@@ -30,6 +32,8 @@ function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
     select: <><rect x="4" y="5" width="16" height="14" rx="2" /><path d="m15 10 2 2-2 2" /></>,
     shape: <><circle cx="8" cy="8" r="4" /><rect x="12" y="12" width="8" height="8" rx="2" /></>,
     sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+    undo: <><path d="M9 7 4 12l5 5" /><path d="M4 12h9a6 6 0 0 1 6 6" /></>,
+    redo: <><path d="m15 7 5 5-5 5" /><path d="M20 12h-9a6 6 0 0 0-6 6" /></>,
   }
 
   return (
@@ -62,14 +66,33 @@ const componentGroups: { label: string; items: { id: ComponentId; label: string;
 const allItems = componentGroups.flatMap((group) => group.items)
 type SizeId = "sm" | "md" | "lg"
 type Mode = "light" | "dark"
+type SpacingToken = "none" | "xs" | "sm" | "md" | "lg" | "xl"
+type RadiusToken = "none" | "sm" | "md" | "lg" | "xl" | "full"
+type HeightToken = "sm" | "md" | "lg" | "xl"
+type FontToken = "xs" | "sm" | "md" | "lg"
+type ColorToken = "background" | "foreground" | "card" | "primary" | "primaryForeground" | "secondary" | "muted" | "mutedForeground" | "border" | "destructive" | "ring"
+
+type DetailTokens = {
+  spacing: Record<SpacingToken, number>
+  radius: Record<RadiusToken, number>
+  height: Record<HeightToken, number>
+  font: Record<FontToken, number>
+}
 
 type ComponentOverride = {
-  height: number
-  padding: number
-  gap: number
-  font: number
-  radius: number
-  colors: Record<Mode, { surface: string; text: string; accent: string; accentText: string; border: string }>
+  height: HeightToken
+  padding: SpacingToken
+  gap: SpacingToken
+  font: FontToken
+  radius: RadiusToken
+  colors: { surface: ColorToken; text: ColorToken; accent: ColorToken; accentText: ColorToken; border: ColorToken }
+}
+
+const defaultDetailTokens: DetailTokens = {
+  spacing: { none: 0, xs: 4, sm: 8, md: 12, lg: 16, xl: 24 },
+  radius: { none: 0, sm: 4, md: 8, lg: 12, xl: 16, full: 999 },
+  height: { sm: 32, md: 36, lg: 40, xl: 48 },
+  font: { xs: 12, sm: 13, md: 14, lg: 16 },
 }
 
 type Tokens = {
@@ -98,25 +121,53 @@ const darkTokens: Tokens = {
   ...lightTokens, background: "#09090b", foreground: "#fafafa", card: "#18181b", primary: "#fafafa", primaryForeground: "#18181b", secondary: "#27272a", muted: "#27272a", mutedForeground: "#a1a1aa", border: "#3f3f46", destructive: "#ef4444", ring: "#d4d4d8",
 }
 
+type EditorState = {
+  tokensByMode: Record<Mode, Tokens>
+  detailTokens: DetailTokens
+  componentOverrides: Record<ComponentId, Partial<Record<SizeId, ComponentOverride>>>
+}
+
+const defaultEditorState: EditorState = {
+  tokensByMode: { light: lightTokens, dark: darkTokens },
+  detailTokens: defaultDetailTokens,
+  componentOverrides: {},
+}
+
+const storageKey = "shadcn-studio-design-v2"
+
+type SavedWorkspace = { design: EditorState; history: { past: EditorState[]; future: EditorState[] } }
+
+function loadWorkspace(): SavedWorkspace {
+  try {
+    const saved = localStorage.getItem(storageKey)
+    if (!saved) return { design: defaultEditorState, history: { past: [], future: [] } }
+    const parsed = JSON.parse(saved)
+    if (parsed.design) return { design: { ...defaultEditorState, ...parsed.design }, history: parsed.history ?? { past: [], future: [] } }
+    return { design: { ...defaultEditorState, ...parsed }, history: { past: [], future: [] } }
+  } catch {
+    return { design: defaultEditorState, history: { past: [], future: [] } }
+  }
+}
+
 const colorControls: { key: keyof Tokens; label: string }[] = [
   { key: "background", label: "Background" }, { key: "foreground", label: "Foreground" }, { key: "card", label: "Card" }, { key: "primary", label: "Primary" }, { key: "primaryForeground", label: "Primary foreground" }, { key: "secondary", label: "Secondary" }, { key: "muted", label: "Muted" }, { key: "mutedForeground", label: "Muted foreground" }, { key: "border", label: "Border" }, { key: "destructive", label: "Destructive" }, { key: "ring", label: "Ring" },
 ]
 
-function tokenStyle(tokens: Tokens): CSSProperties {
+function tokenStyle(tokens: Tokens, details: DetailTokens): CSSProperties {
   return {
-    "--background": tokens.background, "--foreground": tokens.foreground, "--card": tokens.card, "--primary": tokens.primary, "--primary-foreground": tokens.primaryForeground, "--secondary": tokens.secondary, "--muted": tokens.muted, "--muted-foreground": tokens.mutedForeground, "--border": tokens.border, "--destructive": tokens.destructive, "--ring": tokens.ring, "--radius": `${tokens.radius}px`, "--space": `${tokens.density}px`,
-    "--control-sm-height": `${tokens.size.sm.height}px`, "--control-sm-px": `${tokens.size.sm.padding}px`, "--control-sm-gap": `${tokens.size.sm.gap}px`, "--control-sm-font": `${tokens.size.sm.font}px`,
-    "--control-md-height": `${tokens.size.md.height}px`, "--control-md-px": `${tokens.size.md.padding}px`, "--control-md-gap": `${tokens.size.md.gap}px`, "--control-md-font": `${tokens.size.md.font}px`,
-    "--control-lg-height": `${tokens.size.lg.height}px`, "--control-lg-px": `${tokens.size.lg.padding}px`, "--control-lg-gap": `${tokens.size.lg.gap}px`, "--control-lg-font": `${tokens.size.lg.font}px`,
+    "--background": tokens.background, "--foreground": tokens.foreground, "--card": tokens.card, "--primary": tokens.primary, "--primary-foreground": tokens.primaryForeground, "--secondary": tokens.secondary, "--muted": tokens.muted, "--muted-foreground": tokens.mutedForeground, "--border": tokens.border, "--destructive": tokens.destructive, "--ring": tokens.ring, "--radius": `${details.radius.md}px`, "--space": `${details.spacing.lg}px`,
+    "--control-sm-height": `${details.height.sm}px`, "--control-sm-px": `${details.spacing.md}px`, "--control-sm-gap": `${details.spacing.xs}px`, "--control-sm-font": `${details.font.sm}px`,
+    "--control-md-height": `${details.height.md}px`, "--control-md-px": `${details.spacing.lg}px`, "--control-md-gap": `${details.spacing.sm}px`, "--control-md-font": `${details.font.md}px`,
+    "--control-lg-height": `${details.height.lg}px`, "--control-lg-px": `${details.spacing.xl}px`, "--control-lg-gap": `${details.spacing.md}px`, "--control-lg-font": `${details.font.md}px`,
   } as CSSProperties
 }
 
-function componentStyle(override: ComponentOverride | undefined, mode: Mode, size: SizeId): CSSProperties | undefined {
+function componentStyle(override: ComponentOverride | undefined, size: SizeId, tokens: Tokens, details: DetailTokens): CSSProperties | undefined {
   if (!override) return undefined
-  const colors = override.colors[mode]
+  const colors = override.colors
   return {
-    [`--control-${size}-height`]: `${override.height}px`, [`--control-${size}-px`]: `${override.padding}px`, [`--control-${size}-gap`]: `${override.gap}px`, [`--control-${size}-font`]: `${override.font}px`, "--radius": `${override.radius}px`,
-    "--background": colors.surface, "--card": colors.surface, "--foreground": colors.text, "--primary": colors.accent, "--primary-foreground": colors.accentText, "--border": colors.border,
+    [`--control-${size}-height`]: `${details.height[override.height]}px`, [`--control-${size}-px`]: `${details.spacing[override.padding]}px`, [`--control-${size}-gap`]: `${details.spacing[override.gap]}px`, [`--control-${size}-font`]: `${details.font[override.font]}px`, "--radius": `${details.radius[override.radius]}px`,
+    "--background": tokens[colors.surface], "--card": tokens[colors.surface], "--foreground": tokens[colors.text], "--primary": tokens[colors.accent], "--primary-foreground": tokens[colors.accentText], "--border": tokens[colors.border],
   } as CSSProperties
 }
 
@@ -178,61 +229,82 @@ function Slider({ label, value, min, max, suffix = "px", onChange }: { label: st
   return <label className="slider-control"><span><span>{label}</span><output>{value}{suffix}</output></span><input type="range" min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} /></label>
 }
 
+function TokenSelect<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void }) {
+  return <label className="token-select"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value as T)}>{options.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
+}
+
 function App() {
+  const [initialWorkspace] = useState(loadWorkspace)
   const [component, setComponent] = useState<ComponentId>("button")
   const [mode, setMode] = useState<Mode>("light")
-  const [tokensByMode, setTokensByMode] = useState<Record<Mode, Tokens>>({ light: lightTokens, dark: darkTokens })
+  const [design, setDesign] = useState<EditorState>(initialWorkspace.design)
+  const [history, setHistory] = useState<{ past: EditorState[]; future: EditorState[] }>(initialWorkspace.history)
   const [editorTab, setEditorTab] = useState<"theme" | "sizes" | "component">("theme")
   const [activeSize, setActiveSize] = useState<SizeId>("md")
   const [copied, setCopied] = useState(false)
   const [query, setQuery] = useState("")
-  const [componentOverrides, setComponentOverrides] = useState<Record<ComponentId, Partial<Record<SizeId, ComponentOverride>>>>({})
+  const { tokensByMode, componentOverrides, detailTokens } = design
   const tokens = tokensByMode[mode]
   const selectedItem = allItems.find((item) => item.id === component)!
   const activeOverride = componentOverrides[component]?.[activeSize]
   const filteredGroups = componentGroups.map((group) => ({ ...group, items: group.items.filter((item) => item.label.toLowerCase().includes(query.toLowerCase())) })).filter((group) => group.items.length)
 
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify({ design, history }))
+  }, [design, history])
+
+  const applyChange = (recipe: (current: EditorState) => EditorState) => {
+    const next = recipe(design)
+    if (JSON.stringify(next) === JSON.stringify(design)) return
+    setHistory((current) => ({ past: [...current.past, design].slice(-10), future: [] }))
+    setDesign(next)
+  }
+
+  const undo = () => {
+    const previous = history.past.at(-1)
+    if (!previous) return
+    setHistory({ past: history.past.slice(0, -1), future: [design, ...history.future].slice(0, 10) })
+    setDesign(previous)
+  }
+
+  const redo = () => {
+    const next = history.future[0]
+    if (!next) return
+    setHistory({ past: [...history.past, design].slice(-10), future: history.future.slice(1) })
+    setDesign(next)
+  }
+
   const cssExport = useMemo(() => {
+    const tokenDefinitions = [
+      ...Object.entries(detailTokens.spacing).map(([key, value]) => `  --spacing-${key}: ${value}px;`),
+      ...Object.entries(detailTokens.radius).map(([key, value]) => `  --radius-${key}: ${value}px;`),
+      ...Object.entries(detailTokens.height).map(([key, value]) => `  --height-${key}: ${value}px;`),
+      ...Object.entries(detailTokens.font).map(([key, value]) => `  --font-${key}: ${value}px;`),
+    ].join("\n")
     const overrides = Object.entries(componentOverrides).flatMap(([componentId, sizes]) => (Object.entries(sizes) as [SizeId, ComponentOverride][]).map(([size, override]) => {
       const selector = `[data-component="${componentId}"][data-size="${size}"]`
-      const dimensions = `  --control-${size}-height: ${override.height}px;\n  --control-${size}-px: ${override.padding}px;\n  --control-${size}-gap: ${override.gap}px;\n  --control-${size}-font: ${override.font}px;\n  --radius: ${override.radius}px;`
-      const colors = (palette: ComponentOverride["colors"][Mode]) => `  --background: ${palette.surface};\n  --card: ${palette.surface};\n  --foreground: ${palette.text};\n  --primary: ${palette.accent};\n  --primary-foreground: ${palette.accentText};\n  --border: ${palette.border};`
-      return `${selector} {\n${dimensions}\n${colors(override.colors.light)}\n}\n\n.dark ${selector} {\n${colors(override.colors.dark)}\n}`
+      return `${selector} {\n  --control-${size}-height: var(--height-${override.height});\n  --control-${size}-px: var(--spacing-${override.padding});\n  --control-${size}-gap: var(--spacing-${override.gap});\n  --control-${size}-font: var(--font-${override.font});\n  --radius: var(--radius-${override.radius});\n  --background: var(--${override.colors.surface.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --card: var(--${override.colors.surface.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --foreground: var(--${override.colors.text.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --primary: var(--${override.colors.accent.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --primary-foreground: var(--${override.colors.accentText.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --border: var(--${override.colors.border.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n}`
     })).join("\n\n")
-    return `:root {\n${colorControls.map(({ key }) => `  --${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${tokens[key]};`).join("\n")}\n  --radius: ${tokens.radius}px;\n  --space: ${tokens.density}px;\n}${overrides ? `\n\n${overrides}` : ""}`
-  }, [componentOverrides, tokens])
+    return `:root {\n${colorControls.map(({ key }) => `  --${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${tokens[key]};`).join("\n")}\n${tokenDefinitions}\n}${overrides ? `\n\n${overrides}` : ""}`
+  }, [componentOverrides, detailTokens, tokens])
 
-  const updateToken = <K extends keyof Tokens>(key: K, value: Tokens[K]) => setTokensByMode((current) => {
-    if (key === "radius" || key === "density") {
-      return {
-        light: { ...current.light, [key]: value as number },
-        dark: { ...current.dark, [key]: value as number },
-      }
-    }
-    return { ...current, [mode]: { ...current[mode], [key]: value } }
-  })
-  const updateSize = (key: keyof Tokens["size"][SizeId], value: number) => setTokensByMode((current) => {
-    const apply = (theme: Tokens): Tokens => ({ ...theme, size: { ...theme.size, [activeSize]: { ...theme.size[activeSize], [key]: value } } })
-    return { light: apply(current.light), dark: apply(current.dark) }
-  })
-  const createOverride = () => setComponentOverrides((current) => ({ ...current, [component]: { ...current[component], [activeSize]: {
-    ...tokens.size[activeSize], radius: tokens.radius,
-    colors: {
-      light: { surface: tokensByMode.light.background, text: tokensByMode.light.foreground, accent: tokensByMode.light.primary, accentText: tokensByMode.light.primaryForeground, border: tokensByMode.light.border },
-      dark: { surface: tokensByMode.dark.background, text: tokensByMode.dark.foreground, accent: tokensByMode.dark.primary, accentText: tokensByMode.dark.primaryForeground, border: tokensByMode.dark.border },
-    },
-  } } }))
-  const removeOverride = () => setComponentOverrides((current) => {
-    const nextForComponent = { ...current[component] }
+  const updateToken = <K extends keyof Tokens>(key: K, value: Tokens[K]) => applyChange((current) => ({ ...current, tokensByMode: { ...current.tokensByMode, [mode]: { ...current.tokensByMode[mode], [key]: value } } }))
+  const updateDetailToken = <G extends keyof DetailTokens>(group: G, key: keyof DetailTokens[G], value: number) => applyChange((current) => ({ ...current, detailTokens: { ...current.detailTokens, [group]: { ...current.detailTokens[group], [key]: value } } }))
+  const createOverride = () => applyChange((current) => ({ ...current, componentOverrides: { ...current.componentOverrides, [component]: { ...current.componentOverrides[component], [activeSize]: {
+    height: activeSize, padding: activeSize === "sm" ? "md" : activeSize === "md" ? "lg" : "xl", gap: activeSize === "sm" ? "xs" : activeSize === "md" ? "sm" : "md", font: activeSize === "sm" ? "sm" : "md", radius: "md",
+    colors: { surface: "background", text: "foreground", accent: "primary", accentText: "primaryForeground", border: "border" },
+  } } } }))
+  const removeOverride = () => applyChange((current) => {
+    const nextForComponent = { ...current.componentOverrides[component] }
     delete nextForComponent[activeSize]
-    return { ...current, [component]: nextForComponent }
+    return { ...current, componentOverrides: { ...current.componentOverrides, [component]: nextForComponent } }
   })
-  const updateOverrideMetric = (key: "height" | "padding" | "gap" | "font" | "radius", value: number) => setComponentOverrides((current) => ({ ...current, [component]: { ...current[component], [activeSize]: { ...current[component]?.[activeSize]!, [key]: value } } }))
-  const updateOverrideColor = (key: "surface" | "text" | "accent" | "accentText" | "border", value: string) => setComponentOverrides((current) => {
-    const override = current[component]?.[activeSize]!
-    return { ...current, [component]: { ...current[component], [activeSize]: { ...override, colors: { ...override.colors, [mode]: { ...override.colors[mode], [key]: value } } } } }
+  const updateOverrideToken = <K extends "height" | "padding" | "gap" | "font" | "radius">(key: K, value: ComponentOverride[K]) => applyChange((current) => ({ ...current, componentOverrides: { ...current.componentOverrides, [component]: { ...current.componentOverrides[component], [activeSize]: { ...current.componentOverrides[component]?.[activeSize]!, [key]: value } } } }))
+  const updateOverrideColor = (key: "surface" | "text" | "accent" | "accentText" | "border", value: ColorToken) => applyChange((current) => {
+    const override = current.componentOverrides[component]?.[activeSize]!
+    return { ...current, componentOverrides: { ...current.componentOverrides, [component]: { ...current.componentOverrides[component], [activeSize]: { ...override, colors: { ...override.colors, [key]: value } } } } }
   })
-  const reset = () => { setTokensByMode({ light: lightTokens, dark: darkTokens }); setComponentOverrides({}) }
+  const reset = () => applyChange(() => defaultEditorState)
   const copyCss = async () => { await navigator.clipboard.writeText(cssExport); setCopied(true); window.setTimeout(() => setCopied(false), 1400) }
 
   return (
@@ -255,29 +327,31 @@ function App() {
         <div className="nav-note"><span>{allItems.length}</span><p><strong>Components</strong>Complete bundled registry.</p></div>
       </aside>
 
-      <section className="preview-area" style={tokenStyle(tokens)} data-theme={mode}>
+      <section className="preview-area" style={tokenStyle(tokens, detailTokens)} data-theme={mode}>
         <div className="preview-heading"><div><span className="eyebrow">COMPONENT / {selectedItem.label.toUpperCase()}</span><h1>{selectedItem.label}</h1><p>Inspect every state. Adjust its shared tokens from the sidebar.</p></div><div className="mode-pill"><span className={mode === "light" ? "active" : ""}>Light</span><span className={mode === "dark" ? "active" : ""}>Dark</span></div></div>
         <div className="preview-grid">
-          {(["sm", "md", "lg"] as SizeId[]).map((size) => { const override = componentOverrides[component]?.[size]; return <div className="size-column" key={size}><div className="size-title"><span>{size === "md" ? "Default" : size.toUpperCase()}{override && <b>Custom</b>}</span><button onClick={() => { setActiveSize(size); setEditorTab("component") }}>Edit {size}<Icon name="arrow" size={13} /></button></div>{statesForComponent(component).map((state) => <div className="state-row" key={state}><span className="state-label">{state}</span><div className="component-stage" data-component={component} data-size={size} style={componentStyle(override, mode, size)}><PreviewComponent component={component} state={state} size={size} /></div></div>)}</div> })}
+          {(["sm", "md", "lg"] as SizeId[]).map((size) => { const override = componentOverrides[component]?.[size]; return <div className="size-column" key={size}><div className="size-title"><span>{size === "md" ? "Default" : size.toUpperCase()}{override && <b>Custom</b>}</span><button onClick={() => { setActiveSize(size); setEditorTab("component") }}>Edit {size}<Icon name="arrow" size={13} /></button></div>{statesForComponent(component).map((state) => <div className="state-row" key={state}><span className="state-label">{state}</span><div className="component-stage" data-component={component} data-size={size} style={componentStyle(override, size, tokens, detailTokens)}><PreviewComponent component={component} state={state} size={size} /></div></div>)}</div> })}
         </div>
         <div className="token-footnote"><span className="link-node" /><span className="link-line" /><p><strong>Size-linked variants</strong>All {activeSize} components share height, padding, gap and type tokens.</p></div>
       </section>
 
       <aside className="token-panel">
-        <div className="panel-header"><div><span className="eyebrow">EDIT TOKENS</span><h2>Design system</h2></div><button className="icon-button" onClick={reset} aria-label="Reset all tokens"><Icon name="reset" /></button></div>
+        <div className="panel-header"><div><span className="eyebrow">EDIT TOKENS</span><h2>Design system</h2></div><div className="history-actions"><button className="icon-button" onClick={undo} disabled={!history.past.length} aria-label="Undo last change" title={`Undo (${history.past.length}/10)`}><Icon name="undo" /></button><button className="icon-button" onClick={redo} disabled={!history.future.length} aria-label="Redo change" title="Redo"><Icon name="redo" /></button><button className="icon-button" onClick={reset} aria-label="Reset all tokens" title="Reset all"><Icon name="reset" /></button></div></div>
         <div className="tabs"><button className={editorTab === "theme" ? "active" : ""} onClick={() => setEditorTab("theme")}>Theme</button><button className={editorTab === "sizes" ? "active" : ""} onClick={() => setEditorTab("sizes")}>Shared</button><button className={editorTab === "component" ? "active" : ""} onClick={() => setEditorTab("component")}>Component</button></div>
         {editorTab === "theme" ? <div className="panel-scroll">
           <section className="control-section"><div className="section-title"><h3>Colors</h3><span>{mode}</span></div><div className="color-list">{colorControls.map(({ key, label }) => <label className="color-control" key={key}><span>{label}</span><span className="color-value"><input type="color" value={tokens[key] as string} onChange={(event) => updateToken(key, event.target.value as never)} /><code>{tokens[key] as string}</code></span></label>)}</div></section>
-          <section className="control-section"><div className="section-title"><h3>Shape & spacing</h3></div><Slider label="Radius" value={tokens.radius} min={0} max={24} onChange={(value) => updateToken("radius", value)} /><Slider label="Base spacing" value={tokens.density} min={8} max={28} onChange={(value) => updateToken("density", value)} /></section>
+          <section className="token-hint"><span>→</span><div><strong>Looking for spacing or radius?</strong><p>Edit reusable definitions in the Shared tab, then assign them to components.</p></div></section>
         </div> : editorTab === "sizes" ? <div className="panel-scroll">
-          <section className="control-section"><div className="section-title"><div><h3>Variant size</h3><p>Changes apply across every component.</p></div><span className="linked-badge">Linked</span></div><div className="segmented">{(["sm", "md", "lg"] as SizeId[]).map((size) => <button className={activeSize === size ? "active" : ""} onClick={() => setActiveSize(size)} key={size}>{size === "md" ? "Default" : size.toUpperCase()}</button>)}</div><div className="link-card"><span className="link-icon">⌘</span><div><strong>{activeSize.toUpperCase()} token group</strong><p>All compatible variants in the 61-component registry stay in sync.</p></div></div></section>
-          <section className="control-section"><div className="section-title"><h3>Dimensions</h3><span>{activeSize}</span></div><Slider label="Height" value={tokens.size[activeSize].height} min={24} max={56} onChange={(value) => updateSize("height", value)} /><Slider label="Horizontal padding" value={tokens.size[activeSize].padding} min={6} max={32} onChange={(value) => updateSize("padding", value)} /><Slider label="Internal gap" value={tokens.size[activeSize].gap} min={2} max={20} onChange={(value) => updateSize("gap", value)} /><Slider label="Font size" value={tokens.size[activeSize].font} min={11} max={18} onChange={(value) => updateSize("font", value)} /></section>
-          <section className="affected-section"><h3>Affected variants</h3>{["Button", "Input", "Select", "Badge"].map((label) => <div key={label}><span>{label}</span><span>{activeSize}<Icon name="check" size={13} /></span></div>)}</section>
+          <section className="control-section"><div className="section-title"><div><h3>Token definitions</h3><p>Edit values here. Components reference these by name.</p></div><span className="linked-badge">Source</span></div><div className="link-card"><span className="link-icon">⌘</span><div><strong>Single source of truth</strong><p>Every assigned component updates when a token value changes.</p></div></div></section>
+          <section className="control-section"><div className="section-title"><h3>Spacing</h3><span>6 tokens</span></div>{(Object.entries(detailTokens.spacing) as [SpacingToken, number][]).map(([key, value]) => <Slider key={key} label={`space.${key}`} value={value} min={0} max={48} onChange={(next) => updateDetailToken("spacing", key, next)} />)}</section>
+          <section className="control-section"><div className="section-title"><h3>Radius</h3><span>6 tokens</span></div>{(Object.entries(detailTokens.radius) as [RadiusToken, number][]).map(([key, value]) => <Slider key={key} label={`radius.${key}`} value={value} min={0} max={key === "full" ? 999 : 40} onChange={(next) => updateDetailToken("radius", key, next)} />)}</section>
+          <section className="control-section"><div className="section-title"><h3>Control height</h3><span>4 tokens</span></div>{(Object.entries(detailTokens.height) as [HeightToken, number][]).map(([key, value]) => <Slider key={key} label={`height.${key}`} value={value} min={20} max={72} onChange={(next) => updateDetailToken("height", key, next)} />)}</section>
+          <section className="control-section"><div className="section-title"><h3>Type scale</h3><span>4 tokens</span></div>{(Object.entries(detailTokens.font) as [FontToken, number][]).map(([key, value]) => <Slider key={key} label={`font.${key}`} value={value} min={10} max={24} onChange={(next) => updateDetailToken("font", key, next)} />)}</section>
         </div> : <div className="panel-scroll">
           <section className="control-section"><div className="section-title"><div><h3>{selectedItem.label} variants</h3><p>Override one size without changing the others.</p></div><span className={activeOverride ? "custom-badge" : "linked-badge"}>{activeOverride ? "Custom" : "Inherited"}</span></div><div className="segmented">{(["sm", "md", "lg"] as SizeId[]).map((size) => <button className={activeSize === size ? "active" : ""} onClick={() => setActiveSize(size)} key={size}>{size === "md" ? "Default" : size.toUpperCase()}{componentOverrides[component]?.[size] ? " •" : ""}</button>)}</div><div className="link-card"><span className="link-icon">{activeOverride ? "✦" : "⌘"}</span><div><strong>{activeSize.toUpperCase()} is {activeOverride ? "custom" : "linked"}</strong><p>{activeOverride ? `Only ${selectedItem.label} ${activeSize} uses these values.` : `Using the shared ${activeSize} token group.`}</p></div></div>{activeOverride ? <button className="override-action secondary" onClick={removeOverride}>Relink to shared tokens</button> : <button className="override-action" onClick={createOverride}>Create {activeSize} override</button>}</section>
-          {activeOverride && <><section className="control-section"><div className="section-title"><h3>Component dimensions</h3><span>{activeSize}</span></div><Slider label="Height" value={activeOverride.height} min={20} max={72} onChange={(value) => updateOverrideMetric("height", value)} /><Slider label="Horizontal padding" value={activeOverride.padding} min={4} max={40} onChange={(value) => updateOverrideMetric("padding", value)} /><Slider label="Internal gap" value={activeOverride.gap} min={0} max={24} onChange={(value) => updateOverrideMetric("gap", value)} /><Slider label="Font size" value={activeOverride.font} min={10} max={22} onChange={(value) => updateOverrideMetric("font", value)} /><Slider label="Radius" value={activeOverride.radius} min={0} max={32} onChange={(value) => updateOverrideMetric("radius", value)} /></section><section className="control-section"><div className="section-title"><h3>Component colors</h3><span>{mode}</span></div><div className="color-list">{(["surface", "text", "accent", "accentText", "border"] as const).map((key) => <label className="color-control" key={key}><span>{key === "accentText" ? "Accent text" : key[0].toUpperCase() + key.slice(1)}</span><span className="color-value"><input type="color" value={activeOverride.colors[mode][key]} onChange={(event) => updateOverrideColor(key, event.target.value)} /><code>{activeOverride.colors[mode][key]}</code></span></label>)}</div></section></>}
+          {activeOverride && <><section className="control-section"><div className="section-title"><h3>Component token assignments</h3><span>{activeSize}</span></div><TokenSelect label="Height" value={activeOverride.height} options={(Object.entries(detailTokens.height) as [HeightToken, number][]).map(([key, value]) => ({ value: key, label: `height.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("height", value)} /><TokenSelect label="Horizontal padding" value={activeOverride.padding} options={(Object.entries(detailTokens.spacing) as [SpacingToken, number][]).map(([key, value]) => ({ value: key, label: `space.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("padding", value)} /><TokenSelect label="Internal gap" value={activeOverride.gap} options={(Object.entries(detailTokens.spacing) as [SpacingToken, number][]).map(([key, value]) => ({ value: key, label: `space.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("gap", value)} /><TokenSelect label="Font size" value={activeOverride.font} options={(Object.entries(detailTokens.font) as [FontToken, number][]).map(([key, value]) => ({ value: key, label: `font.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("font", value)} /><TokenSelect label="Radius" value={activeOverride.radius} options={(Object.entries(detailTokens.radius) as [RadiusToken, number][]).map(([key, value]) => ({ value: key, label: `radius.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("radius", value)} /></section><section className="control-section"><div className="section-title"><h3>Semantic color assignments</h3><span>{mode}</span></div>{(["surface", "text", "accent", "accentText", "border"] as const).map((key) => <TokenSelect key={key} label={key === "accentText" ? "Accent text" : key[0].toUpperCase() + key.slice(1)} value={activeOverride.colors[key]} options={colorControls.map(({ key: colorKey, label }) => ({ value: colorKey as ColorToken, label: `${label} · ${tokens[colorKey]}` }))} onChange={(value) => updateOverrideColor(key, value)} />)}</section></>}
         </div>}
-        <div className="panel-footer"><button onClick={reset}>Reset all</button><span>Stored in this session</span></div>
+        <div className="panel-footer"><button onClick={reset}>Reset all</button><span>Autosaved · {history.past.length}/10 undo</span></div>
       </aside>
     </main>
   )
