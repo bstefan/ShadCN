@@ -74,7 +74,7 @@ type SpacingToken = "none" | "xs" | "sm" | "md" | "lg" | "xl"
 type RadiusToken = "none" | "sm" | "md" | "lg" | "xl" | "full"
 type HeightToken = "sm" | "md" | "lg" | "xl"
 type FontToken = "xs" | "sm" | "md" | "lg"
-type ColorToken = "background" | "foreground" | "card" | "primary" | "primaryForeground" | "secondary" | "muted" | "mutedForeground" | "border" | "destructive" | "ring"
+type ColorToken = "none" | "background" | "foreground" | "card" | "primary" | "primaryForeground" | "secondary" | "muted" | "mutedForeground" | "border" | "destructive" | "ring"
 
 type DetailTokens = {
   spacing: Record<SpacingToken, number>
@@ -180,9 +180,10 @@ function tokenStyle(tokens: Tokens, details: DetailTokens): CSSProperties {
 function componentStyle(override: ComponentOverride | undefined, size: SizeId, tokens: Tokens, details: DetailTokens): CSSProperties | undefined {
   if (!override) return undefined
   const colors = override.colors
+  const color = (key: ColorToken, kind: "fill" | "text") => key === "none" ? kind === "text" ? "inherit" : "transparent" : tokens[key]
   return {
     [`--control-${size}-height`]: `${details.height[override.height]}px`, [`--control-${size}-px`]: `${details.spacing[override.padding]}px`, [`--control-${size}-gap`]: `${details.spacing[override.gap]}px`, [`--control-${size}-font`]: `${details.font[override.font]}px`, "--radius": `${details.radius[override.radius]}px`,
-    "--background": tokens[colors.surface], "--card": tokens[colors.surface], "--foreground": tokens[colors.text], "--primary": tokens[colors.accent], "--primary-foreground": tokens[colors.accentText], "--border": tokens[colors.border],
+    "--background": color(colors.surface, "fill"), "--card": color(colors.surface, "fill"), "--foreground": color(colors.text, "text"), "--primary": color(colors.accent, "fill"), "--primary-foreground": color(colors.accentText, "text"), "--border": color(colors.border, "fill"),
   } as CSSProperties
 }
 
@@ -271,6 +272,16 @@ function TokenSelect<T extends string>({ label, value, options, onChange }: { la
   return <label className="token-select"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value as T)}>{options.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label>
 }
 
+function ColorTokenSelect({ label, value, tokens, onChange }: { label: string; value: ColorToken; tokens: Tokens; onChange: (value: ColorToken) => void }) {
+  const [open, setOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ left: 0, top: 0 })
+  const labelId = `color-label-${label.toLowerCase().replace(/\s+/g, "-")}`
+  const options = [{ key: "none" as ColorToken, label: "None" }, ...colorControls.map(({ key, label }) => ({ key: key as ColorToken, label }))]
+  const selected = options.find((option) => option.key === value)!
+  const swatch = (key: ColorToken) => <span className={`color-token-swatch${key === "none" ? " none" : ""}`} style={key === "none" ? undefined : { backgroundColor: tokens[key] }} aria-hidden="true" />
+  return <div className="token-select color-token-row"><span id={labelId}>{label}</span><div className="color-token-picker" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }} onKeyDown={(event) => { if (event.key === "Escape") setOpen(false) }}><button type="button" className="color-token-trigger" aria-labelledby={labelId} aria-haspopup="listbox" aria-expanded={open} onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setMenuPosition({ left: Math.max(8, rect.right - 205), top: window.innerHeight - rect.bottom > 270 ? rect.bottom + 4 : Math.max(8, rect.top - 264) }); setOpen(!open) }}>{swatch(value)}<span>{selected.label}{value !== "none" && <small> · {tokens[value]}</small>}</span><span className="color-token-chevron">⌄</span></button>{open && <div className="color-token-menu" role="listbox" aria-labelledby={labelId} style={menuPosition}>{options.map((option) => <button type="button" role="option" aria-selected={option.key === value} key={option.key} onClick={() => { onChange(option.key); setOpen(false) }}>{swatch(option.key)}<span>{option.label}{option.key !== "none" && <small> · {tokens[option.key]}</small>}</span></button>)}</div>}</div></div>
+}
+
 function App() {
   const [initialWorkspace] = useState(loadWorkspace)
   const [component, setComponent] = useState<ComponentId>("button")
@@ -326,7 +337,7 @@ function App() {
   }
 
   const cssExport = useMemo(() => {
-    const modeColors = (selectedMode: Mode) => colorControls.map(({ key }) => `  --${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${tokensByMode[selectedMode][key]};`).join("\n")
+    const modeColors = (selectedMode: Mode) => colorControls.flatMap(({ key }) => { const name = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`); const value = tokensByMode[selectedMode][key]; return [`  --${name}: ${value};`, `  --theme-${name}: ${value};`] }).join("\n")
     const tokenDefinitions = [
       ...Object.entries(detailTokens.spacing).map(([key, value]) => `  --spacing-${key}: ${value}px;`),
       ...Object.entries(detailTokens.radius).map(([key, value]) => `  --radius-${key}: ${value}px;`),
@@ -335,7 +346,8 @@ function App() {
     ].join("\n")
     const overrides = Object.entries(componentOverrides).flatMap(([componentId, sizes]) => (Object.entries(sizes) as [SizeId, ComponentOverride][]).map(([size, override]) => {
       const selector = `[data-component="${componentId}"][data-size="${size}"]`
-      return `${selector} {\n  --control-${size}-height: var(--height-${override.height});\n  --control-${size}-px: var(--spacing-${override.padding});\n  --control-${size}-gap: var(--spacing-${override.gap});\n  --control-${size}-font: var(--font-${override.font});\n  --radius: var(--radius-${override.radius});\n  --background: var(--${override.colors.surface.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --card: var(--${override.colors.surface.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --foreground: var(--${override.colors.text.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --primary: var(--${override.colors.accent.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --primary-foreground: var(--${override.colors.accentText.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --border: var(--${override.colors.border.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n}`
+      const colorRef = (key: ColorToken, kind: "fill" | "text") => key === "none" ? kind === "text" ? "inherit" : "transparent" : `var(--theme-${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)})`
+      return `${selector} {\n  --control-${size}-height: var(--height-${override.height});\n  --control-${size}-px: var(--spacing-${override.padding});\n  --control-${size}-gap: var(--spacing-${override.gap});\n  --control-${size}-font: var(--font-${override.font});\n  --radius: var(--radius-${override.radius});\n  --background: ${colorRef(override.colors.surface, "fill")};\n  --card: ${colorRef(override.colors.surface, "fill")};\n  --foreground: ${colorRef(override.colors.text, "text")};\n  --primary: ${colorRef(override.colors.accent, "fill")};\n  --primary-foreground: ${colorRef(override.colors.accentText, "text")};\n  --border: ${colorRef(override.colors.border, "fill")};\n}`
     })).join("\n\n")
     return `:root, [data-theme="light"] {\n${modeColors("light")}\n${tokenDefinitions}\n}\n\n.dark, [data-theme="dark"] {\n${modeColors("dark")}\n}${overrides ? `\n\n${overrides}` : ""}`
   }, [componentOverrides, detailTokens, tokensByMode])
@@ -398,7 +410,7 @@ function App() {
           <section className="control-section"><div className="section-title"><h3>Type scale</h3><span>4 tokens</span></div>{(Object.entries(detailTokens.font) as [FontToken, number][]).map(([key, value]) => <Slider key={key} label={`font.${key}`} value={value} min={10} max={24} onChange={(next) => updateDetailToken("font", key, next)} />)}</section>
         </div> : <div className="panel-scroll">
           <section className="control-section"><div className="section-title"><div><h3>{selectedItem.label} sizes</h3><p>Choose a size, then assign its tokens below.</p></div></div><div className="segmented">{(["sm", "md", "lg"] as SizeId[]).map((size) => <button className={activeSize === size ? "active" : ""} onClick={() => setActiveSize(size)} key={size}>{size === "md" ? "Default" : size.toUpperCase()}{componentOverrides[component]?.[size] ? " •" : ""}</button>)}</div></section>
-          <section className="control-section"><div className="section-title"><h3>Editable variables</h3><span>{activeSize}</span></div><TokenSelect label="Height" value={activeAssignment.height} options={(Object.entries(detailTokens.height) as [HeightToken, number][]).map(([key, value]) => ({ value: key, label: `height.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("height", value)} /><TokenSelect label="Horizontal padding" value={activeAssignment.padding} options={(Object.entries(detailTokens.spacing) as [SpacingToken, number][]).map(([key, value]) => ({ value: key, label: `space.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("padding", value)} /><TokenSelect label="Internal gap" value={activeAssignment.gap} options={(Object.entries(detailTokens.spacing) as [SpacingToken, number][]).map(([key, value]) => ({ value: key, label: `space.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("gap", value)} /><TokenSelect label="Font size" value={activeAssignment.font} options={(Object.entries(detailTokens.font) as [FontToken, number][]).map(([key, value]) => ({ value: key, label: `font.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("font", value)} /><TokenSelect label="Radius" value={activeAssignment.radius} options={(Object.entries(detailTokens.radius) as [RadiusToken, number][]).map(([key, value]) => ({ value: key, label: `radius.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("radius", value)} /></section><section className="control-section"><div className="section-title"><h3>Semantic colors</h3><span>{mode}</span></div>{(["surface", "text", "accent", "accentText", "border"] as const).map((key) => <TokenSelect key={key} label={key === "accentText" ? "Accent text" : key[0].toUpperCase() + key.slice(1)} value={activeAssignment.colors[key]} options={colorControls.map(({ key: colorKey, label }) => ({ value: colorKey as ColorToken, label: `${label} · ${tokens[colorKey]}` }))} onChange={(value) => updateOverrideColor(key, value)} />)}</section>
+          <section className="control-section"><div className="section-title"><h3>Editable variables</h3><span>{activeSize}</span></div><TokenSelect label="Height" value={activeAssignment.height} options={(Object.entries(detailTokens.height) as [HeightToken, number][]).map(([key, value]) => ({ value: key, label: `height.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("height", value)} /><TokenSelect label="Horizontal padding" value={activeAssignment.padding} options={(Object.entries(detailTokens.spacing) as [SpacingToken, number][]).map(([key, value]) => ({ value: key, label: `space.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("padding", value)} /><TokenSelect label="Internal gap" value={activeAssignment.gap} options={(Object.entries(detailTokens.spacing) as [SpacingToken, number][]).map(([key, value]) => ({ value: key, label: `space.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("gap", value)} /><TokenSelect label="Font size" value={activeAssignment.font} options={(Object.entries(detailTokens.font) as [FontToken, number][]).map(([key, value]) => ({ value: key, label: `font.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("font", value)} /><TokenSelect label="Radius" value={activeAssignment.radius} options={(Object.entries(detailTokens.radius) as [RadiusToken, number][]).map(([key, value]) => ({ value: key, label: `radius.${key} · ${value}px` }))} onChange={(value) => updateOverrideToken("radius", value)} /></section><section className="control-section"><div className="section-title"><h3>Semantic colors</h3><span>{mode}</span></div>{(["surface", "text", "accent", "accentText", "border"] as const).map((key) => <ColorTokenSelect key={key} label={key === "accentText" ? "Accent text" : key[0].toUpperCase() + key.slice(1)} value={activeAssignment.colors[key]} tokens={tokens} onChange={(value) => updateOverrideColor(key, value)} />)}</section>
         </div>}
         <div className="panel-footer"><button onClick={requestReset}>Reset all</button><span>Autosaved · {history.past.length}/10 undo</span></div>
       </aside>
