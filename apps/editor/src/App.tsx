@@ -274,7 +274,7 @@ function TokenSelect<T extends string>({ label, value, options, onChange }: { la
 function App() {
   const [initialWorkspace] = useState(loadWorkspace)
   const [component, setComponent] = useState<ComponentId>("button")
-  const [mode, setMode] = useState<Mode>("light")
+  const [mode, setMode] = useState<Mode>(() => localStorage.getItem("shadcn-studio-mode") === "dark" ? "dark" : "light")
   const [previewLayout, setPreviewLayout] = useState<"columns" | "stacked">(() => localStorage.getItem("shadcn-studio-preview-layout") === "stacked" ? "stacked" : "columns")
   const [design, setDesign] = useState<EditorState>(initialWorkspace.design)
   const [history, setHistory] = useState<{ past: EditorState[]; future: EditorState[] }>(initialWorkspace.history)
@@ -296,6 +296,13 @@ function App() {
   useEffect(() => {
     localStorage.setItem("shadcn-studio-preview-layout", previewLayout)
   }, [previewLayout])
+
+  useEffect(() => {
+    localStorage.setItem("shadcn-studio-mode", mode)
+    document.documentElement.dataset.theme = mode
+    document.documentElement.style.backgroundColor = tokens.background
+    document.documentElement.style.colorScheme = mode
+  }, [mode, tokens.background])
 
   const applyChange = (recipe: (current: EditorState) => EditorState) => {
     const next = recipe(design)
@@ -319,6 +326,7 @@ function App() {
   }
 
   const cssExport = useMemo(() => {
+    const modeColors = (selectedMode: Mode) => colorControls.map(({ key }) => `  --${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${tokensByMode[selectedMode][key]};`).join("\n")
     const tokenDefinitions = [
       ...Object.entries(detailTokens.spacing).map(([key, value]) => `  --spacing-${key}: ${value}px;`),
       ...Object.entries(detailTokens.radius).map(([key, value]) => `  --radius-${key}: ${value}px;`),
@@ -329,8 +337,8 @@ function App() {
       const selector = `[data-component="${componentId}"][data-size="${size}"]`
       return `${selector} {\n  --control-${size}-height: var(--height-${override.height});\n  --control-${size}-px: var(--spacing-${override.padding});\n  --control-${size}-gap: var(--spacing-${override.gap});\n  --control-${size}-font: var(--font-${override.font});\n  --radius: var(--radius-${override.radius});\n  --background: var(--${override.colors.surface.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --card: var(--${override.colors.surface.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --foreground: var(--${override.colors.text.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --primary: var(--${override.colors.accent.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --primary-foreground: var(--${override.colors.accentText.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n  --border: var(--${override.colors.border.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)});\n}`
     })).join("\n\n")
-    return `:root {\n${colorControls.map(({ key }) => `  --${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}: ${tokens[key]};`).join("\n")}\n${tokenDefinitions}\n}${overrides ? `\n\n${overrides}` : ""}`
-  }, [componentOverrides, detailTokens, tokens])
+    return `:root, [data-theme="light"] {\n${modeColors("light")}\n${tokenDefinitions}\n}\n\n.dark, [data-theme="dark"] {\n${modeColors("dark")}\n}${overrides ? `\n\n${overrides}` : ""}`
+  }, [componentOverrides, detailTokens, tokensByMode])
 
   const updateToken = <K extends keyof Tokens>(key: K, value: Tokens[K]) => applyChange((current) => ({ ...current, tokensByMode: { ...current.tokensByMode, [mode]: { ...current.tokensByMode[mode], [key]: value } } }))
   const updateDetailToken = <G extends keyof DetailTokens>(group: G, key: keyof DetailTokens[G], value: number) => applyChange((current) => ({ ...current, detailTokens: { ...current.detailTokens, [group]: { ...current.detailTokens[group], [key]: value } } }))
@@ -351,7 +359,7 @@ function App() {
         <div className="brand"><span className="brand-mark"><span /></span><span>ShadCN <b>Studio</b></span></div>
         <div className="topbar-center"><span className="status-dot" />All changes saved locally</div>
         <div className="topbar-actions">
-          <button className="icon-button" onClick={() => setMode(mode === "light" ? "dark" : "light")} aria-label={`Use ${mode === "light" ? "dark" : "light"} preview`}><Icon name={mode === "light" ? "moon" : "sun"} /></button>
+          <button className="icon-button" onClick={() => setMode(mode === "light" ? "dark" : "light")} aria-label={`Use ${mode === "light" ? "dark" : "light"} mode`} title={`Use ${mode === "light" ? "dark" : "light"} mode`}><Icon name={mode === "light" ? "moon" : "sun"} /></button>
           <button className="export-button" onClick={copyCss}><Icon name={copied ? "check" : "clipboard"} />{copied ? "Copied" : "Copy CSS"}</button>
         </div>
       </header>
